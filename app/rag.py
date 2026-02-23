@@ -69,9 +69,9 @@ def rag_local(query):
     context_text = "\n".join([doc.page_content for doc in context])
 
     prompt = f"""
-Tu es un assistant IA.
-Tu réponds uniquement à partir du contexte fourni.
-Si l'information n'existe pas dans le contexte, dis "Information non trouvée dans les documents."
+Tu es mon assistant IA.
+Tu réponds uniquement à partir du contexte que je t'ai fourni.
+Si l'information n'existe pas dans le contexte, dis "Je suis navré Bob, je ne trouve pas l'information demandée dans les documents."
 
 Contexte :
 {context_text}
@@ -94,9 +94,9 @@ def rag_openai(query):
     context_text = "\n".join([doc.page_content for doc in context])
 
     prompt = f"""
-Tu es un assistant IA.
-Tu réponds uniquement à partir du contexte fourni.
-Si l'information n'existe pas dans le contexte, dis "Information non trouvée dans les documents."
+Tu es mon assistant IA.
+Tu réponds uniquement à partir du contexte que je t'ai fourni.
+Si l'information n'existe pas dans le contexte, dis "Je suis navré Bob, je ne trouve pas l'information demandée dans les documents."
 
 Contexte :
 {context_text}
