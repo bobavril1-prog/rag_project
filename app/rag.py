@@ -1,9 +1,14 @@
 import os
+from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_ollama import OllamaEmbeddings, OllamaLLM
+from openai import OpenAI
 
+# Charger .env
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # ----------------------------
 # 1. Charger les PDF
@@ -14,7 +19,6 @@ for file in os.listdir("data"):
     if file.endswith(".pdf"):
         loader = PyPDFLoader(f"data/{file}")
         docs.extend(loader.load())
-
 
 # ----------------------------
 # 2. Découpage (chunking)
@@ -27,13 +31,11 @@ splitter = RecursiveCharacterTextSplitter(
 
 chunks = splitter.split_documents(docs)
 
-
 # ----------------------------
 # 3. Embeddings (local Ollama)
 # ----------------------------
 
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
-
 
 # ----------------------------
 # 4. Base vectorielle FAISS
@@ -49,25 +51,21 @@ else:
     db = FAISS.from_documents(chunks, embeddings)
     db.save_local("faiss_index")
 
-
-retriever = db.as_retriever()
+retriever = db.as_retriever(search_kwargs={"k": 10})
 
 
 # ----------------------------
 # 5. LLM local (Ollama)
 # ----------------------------
 
-llm = OllamaLLM(model="llama3")
-
+llm_local = OllamaLLM(model="llama3")
 
 # ----------------------------
-# 6. Fonction RAG
+# 6. Fonction RAG locale (Ollama)
 # ----------------------------
 
-def rag(query):
-
+def rag_local(query):
     context = retriever.invoke(query)
-
     context_text = "\n".join([doc.page_content for doc in context])
 
     prompt = f"""
@@ -83,18 +81,34 @@ Question : {query}
 Réponse :
 """
 
-    response = llm.invoke(prompt)
-
-    return response
-
+    return llm_local.invoke(prompt)
 
 # ----------------------------
-# 7. Test local
+# 7. Fonction RAG OpenAI (GPT‑4o)
 # ----------------------------
 
-if __name__ == "__main__":
-    print(rag("Quels sont les points clés abordés dans ces documents ?"))
+def rag_openai(query):
+    client = OpenAI(api_key=OPENAI_API_KEY)
 
+    context = retriever.invoke(query)
+    context_text = "\n".join([doc.page_content for doc in context])
 
+    prompt = f"""
+Tu es un assistant IA.
+Tu réponds uniquement à partir du contexte fourni.
+Si l'information n'existe pas dans le contexte, dis "Information non trouvée dans les documents."
 
-   
+Contexte :
+{context_text}
+
+Question : {query}
+
+Réponse :
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return response.choices[0].message.content
